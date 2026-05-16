@@ -4,7 +4,9 @@ import { useAnalyze } from '../hooks/useAnalyze'
 
 function VoiceInput({ value, onChange }) {
   const [listening, setListening] = useState(false)
+  const [interim, setInterim] = useState('')
   const recognitionRef = useRef(null)
+  const finalRef = useRef('')
 
   const toggleListen = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
@@ -12,22 +14,50 @@ function VoiceInput({ value, onChange }) {
       alert('Selaimesi ei tue puheentunnistusta. Kirjoita teksti kenttään.')
       return
     }
+
     if (listening) {
       recognitionRef.current?.stop()
       setListening(false)
+      setInterim('')
       return
     }
+
+    finalRef.current = value || ''
     const recognition = new SpeechRecognition()
     recognition.lang = 'fi-FI'
     recognition.continuous = true
     recognition.interimResults = true
     recognitionRef.current = recognition
+
     recognition.onresult = (e) => {
-      const transcript = Array.from(e.results).map(r => r[0].transcript).join('')
-      onChange(transcript)
+      let interimText = ''
+      let newFinal = ''
+
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const transcript = e.results[i][0].transcript
+        if (e.results[i].isFinal) {
+          newFinal += transcript + ' '
+        } else {
+          interimText += transcript
+        }
+      }
+
+      if (newFinal) {
+        finalRef.current = (finalRef.current + newFinal).trim()
+        onChange(finalRef.current)
+      }
+      setInterim(interimText)
     }
-    recognition.onend = () => setListening(false)
-    recognition.onerror = () => setListening(false)
+
+    recognition.onend = () => {
+      setListening(false)
+      setInterim('')
+    }
+    recognition.onerror = () => {
+      setListening(false)
+      setInterim('')
+    }
+
     recognition.start()
     setListening(true)
   }
@@ -37,38 +67,66 @@ function VoiceInput({ value, onChange }) {
       <div style={{ fontSize: 9, letterSpacing: 3, color: t.dim, textTransform: 'uppercase', marginBottom: 8 }}>
         Konteksti (valinnainen)
       </div>
-      <div style={{ position: 'relative' }}>
-        <textarea
-          value={value}
-          onChange={e => onChange(e.target.value)}
-          placeholder="Mikä tässä detaljissa on olennaista? Mikä on ongelma tai tavoite?"
-          rows={3}
-          style={{
-            width: '100%', background: '#161616', border: `1px solid #222`,
-            color: t.text, padding: '10px 44px 10px 12px', fontSize: 12,
-            fontFamily: t.font, outline: 'none', resize: 'none',
-            lineHeight: 1.5, letterSpacing: 0.3
-          }}
-        />
+
+      {/* Live preview */}
+      <div style={{
+        background: '#0d0d0d', border: `1px solid ${listening ? '#3a3a20' : '#1e1e1e'}`,
+        minHeight: 72, padding: '10px 44px 10px 12px',
+        marginBottom: 0, position: 'relative', transition: 'border-color 0.2s'
+      }}>
+        <span style={{ fontSize: 12, color: t.text, fontFamily: t.font, lineHeight: 1.6 }}>
+          {value}
+        </span>
+        {interim && (
+          <span style={{ fontSize: 12, color: t.dim, fontFamily: t.font, lineHeight: 1.6, fontStyle: 'italic' }}>
+            {value ? ' ' : ''}{interim}
+          </span>
+        )}
+        {!value && !interim && (
+          <span style={{ fontSize: 12, color: t.faint, fontFamily: t.font, fontStyle: 'italic' }}>
+            {listening ? 'Kuuntelee...' : 'Mikä on ongelma tai tavoite?'}
+          </span>
+        )}
+
         <button
           onClick={toggleListen}
           style={{
             position: 'absolute', right: 8, top: 8,
-            width: 28, height: 28, borderRadius: '50%',
-            background: listening ? '#8b3a3a' : '#1e1e1e',
+            width: 30, height: 30, borderRadius: '50%',
+            background: listening ? '#5a1a1a' : '#1e1e1e',
             border: `1px solid ${listening ? '#c05050' : '#333'}`,
             cursor: 'pointer', display: 'flex', alignItems: 'center',
-            justifyContent: 'center', fontSize: 14,
-            animation: listening ? 'pulse 1s infinite' : 'none'
+            justifyContent: 'center', fontSize: 14, flexShrink: 0
           }}
-        >🎤</button>
+          title={listening ? 'Lopeta' : 'Puhu'}
+        >
+          {listening ? '⏹' : '🎤'}
+        </button>
       </div>
-      {listening && (
-        <div style={{ fontSize: 10, color: '#c05050', letterSpacing: 1, marginTop: 6, fontFamily: t.font }}>
-          ● Kuuntelee... paina 🎤 lopettaaksesi
-        </div>
-      )}
-      <style>{`@keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:0.5 } }`}</style>
+
+      {/* Status bar */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 8,
+        padding: '6px 10px', background: '#0a0a0a',
+        border: '1px solid #1a1a1a', borderTop: 'none'
+      }}>
+        <div style={{
+          width: 6, height: 6, borderRadius: '50%',
+          background: listening ? '#c05050' : '#2a2a2a',
+          animation: listening ? 'blink 1s infinite' : 'none',
+          flexShrink: 0
+        }} />
+        <span style={{ fontSize: 9, color: listening ? '#c05050' : t.faint, letterSpacing: 1, fontFamily: t.font }}>
+          {listening ? 'KUUNTELEE' : 'PAINA 🎤 PUHUAKSESI'}
+        </span>
+        {value && (
+          <button onClick={() => { onChange(''); finalRef.current = '' }}
+            style={{ marginLeft: 'auto', background: 'none', border: 'none', color: t.faint, cursor: 'pointer', fontSize: 10, fontFamily: t.font }}>
+            Tyhjennä
+          </button>
+        )}
+      </div>
+      <style>{`@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }`}</style>
     </div>
   )
 }
@@ -131,9 +189,11 @@ export default function AddScreen({ onSave }) {
     <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 80, padding: 16 }}>
       <div style={{ fontSize: 9, letterSpacing: 3, color: t.dim, textTransform: 'uppercase', marginBottom: 16 }}>Esikatselu</div>
       <img src={imageData} alt="preview"
-        style={{ width: '100%', maxHeight: 280, objectFit: 'contain', background: '#0a0a0a', display: 'block', marginBottom: 16 }} />
+        style={{ width: '100%', maxHeight: 260, objectFit: 'contain', background: '#0a0a0a', display: 'block', marginBottom: 16 }} />
       <div style={{ fontSize: 10, color: t.faint, marginBottom: 16 }}>{fileName}</div>
+
       <VoiceInput value={context} onChange={setContext} />
+
       {analyzing
         ? <Spinner label="Analysoidaan... Haetaan RT-kortit, valmistajat & videot" />
         : <>

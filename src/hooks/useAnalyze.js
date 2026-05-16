@@ -6,7 +6,7 @@ export function useAnalyze() {
   const [analyzing, setAnalyzing] = useState(false)
   const [error, setError] = useState(null)
 
-  const analyze = async (imageData, mediaType, fileName) => {
+  const analyze = async (imageData, mediaType, fileName, context = '') => {
     setAnalyzing(true)
     setError(null)
 
@@ -36,7 +36,7 @@ export function useAnalyze() {
               imageContent,
               {
                 type: 'text',
-                text: `Analysoi tämä rakennusdetalji ja palauta JSON-objekti:
+                text: `${context ? `Käyttäjän konteksti ja tavoite: "${context}"\n\n` : ''}Analysoi tämä rakennusdetalji ja palauta JSON-objekti:
 {
   "nimi": "Detaljin lyhyt nimi suomeksi",
   "kuvaus": "1-2 lauseen kuvaus",

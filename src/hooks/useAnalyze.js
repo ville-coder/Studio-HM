@@ -28,30 +28,25 @@ export function useAnalyze() {
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-5',
-          max_tokens: 1500,
-          system: 'Olet suomalainen rakennustekniikan asiantuntija (LVIS + arkkitehtuuri). Analysoi rakennusdetalji ja palauta VAIN JSON ilman markdown-koodiblokeja.',
-          messages: [{
-            role: 'user',
-            content: [
-              imageContent,
-              {
-                type: 'text',
-                text: `${context ? `Käyttäjän konteksti ja tavoite: "${context}"\n\n` : ''}Analysoi tämä rakennusdetalji ja palauta JSON-objekti:
-{
-  "nimi": "Detaljin lyhyt nimi suomeksi",
-  "kuvaus": "1-2 lauseen kuvaus",
-  "jarjestelma": "Yksi seuraavista: Rakenne / Vaippa / Perustukset / LVI / Sähkö / Paloturvallisuus",
-  "alaluokka": "Sopiva alaluokka järjestelmälle",
-  "rtKortit": ["RT XX-XXXXX"],
-  "sfsStandardit": ["SFS-EN XXXX"],
-  "valmistajat": [{"nimi": "...", "tuote": "...", "url": "...", "puhelin": "..."}],
-  "asennusohjeet": [{"lahde": "...", "url": "..."}],
-  "videot": [{"otsikko": "...", "url": "...", "alusta": "YouTube/Web"}],
-  "avainsanat": ["...", "..."]
-}`
-              }
-            ]
-          }],
+          max_tokens: 2000,
+          system: 'Olet suomalainen rakennustekniikan asiantuntija (LVIS + arkkitehtuuri). Tehtäväsi on analysoida rakennusdetaljeja. TÄRKEÄÄ: Vastaa AINA pelkällä JSON-objektilla. Älä kirjoita mitään muuta – ei selityksiä, ei markdown-koodiblokeja, ei tekstiä ennen tai jälkeen JSONin.',
+          messages: [
+            {
+              role: 'user',
+              content: [
+                imageContent,
+                {
+                  type: 'text',
+                  text: `${context ? `Käyttäjän konteksti: "${context}"\n\n` : ''}Analysoi kuva ja palauta VAIN tämä JSON-rakenne täytettynä (ei muuta tekstiä):
+{"nimi":"","kuvaus":"","jarjestelma":"","alaluokka":"","rtKortit":[],"sfsStandardit":[],"valmistajat":[],"asennusohjeet":[],"videot":[],"avainsanat":[]}`
+                }
+              ]
+            },
+            {
+              role: 'assistant',
+              content: '{'
+            }
+          ],
           tools: [{ type: 'web_search_20250305', name: 'web_search' }]
         })
       })
@@ -63,7 +58,9 @@ export function useAnalyze() {
 
       const data = await res.json()
       const text = data.content?.find(b => b.type === 'text')?.text || ''
-      const parsed = JSON.parse(text.replace(/```json|```/g, '').trim())
+      // Prefill trick: Claude jatkaa '{' -merkistä, joten lisätään se takaisin
+      const jsonStr = ('{' + text).replace(/```json|```/g, '').trim()
+      const parsed = JSON.parse(jsonStr)
 
       return {
         success: true,

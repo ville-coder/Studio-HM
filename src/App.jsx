@@ -3,6 +3,7 @@ import { useLibrary } from './hooks/useLibrary'
 import LibraryScreen from './components/LibraryScreen'
 import DetailScreen from './components/DetailScreen'
 import AddScreen from './components/AddScreen'
+import VideoScreen from './components/VideoScreen'
 import { t, Toast } from './components/ui'
 
 function BottomNav({ active, onTab }) {
@@ -16,6 +17,7 @@ function BottomNav({ active, onTab }) {
     }}>
       {[
         { id: 'library', label: 'Kirjasto', icon: '⊟' },
+        { id: 'video', label: 'Videot', icon: '▶' },
         { id: 'add', label: 'Lisää', icon: '⊕' }
       ].map(tab => (
         <button key={tab.id} onClick={() => onTab(tab.id)}
@@ -24,7 +26,7 @@ function BottomNav({ active, onTab }) {
             cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
             borderTop: active === tab.id ? `2px solid ${t.accent}` : '2px solid transparent'
           }}>
-          <span style={{ fontSize: 20, color: active === tab.id ? t.accent : t.dim }}>{tab.icon}</span>
+          <span style={{ fontSize: 18, color: active === tab.id ? t.accent : t.dim }}>{tab.icon}</span>
           <span style={{ fontSize: 9, letterSpacing: 2, color: active === tab.id ? t.accent : t.dim, fontFamily: t.font, textTransform: 'uppercase' }}>
             {tab.label}
           </span>
@@ -84,6 +86,8 @@ export default function App() {
           onDelete={async (id) => { await handleDelete(id); setSelected(null) }} />
       ) : tab === 'library' ? (
         <LibraryScreen library={library} loading={loading} onSelect={setSelected} />
+      ) : tab === 'video' ? (
+        <VideoScreen />
       ) : (
         <AddScreen onSave={handleSave} />
       )}

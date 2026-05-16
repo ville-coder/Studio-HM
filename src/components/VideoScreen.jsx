@@ -26,14 +26,20 @@ export default function VideoScreen() {
     setLoading(true); setError(null); setVideos([]); setSearched(true)
     try {
       const params = new URLSearchParams({
-        part: 'snippet', q: searchQuery + ' rakentaminen',
-        type: 'video', maxResults: 12, relevanceLanguage: 'fi', key: YT_KEY
+        part: 'snippet',
+        q: searchQuery + ' rakentaminen',
+        type: 'video',
+        maxResults: 12,
+        relevanceLanguage: 'fi',
+        key: YT_KEY
       })
       const res = await fetch(`https://www.googleapis.com/youtube/v3/search?${params}`)
       if (!res.ok) throw new Error('Haku epäonnistui')
       const data = await res.json()
       setVideos(data.items || [])
-    } catch (e) { setError('Haku epäonnistui: ' + e.message) }
+    } catch (e) {
+      setError('Haku epäonnistui: ' + e.message)
+    }
     setLoading(false)
   }, [])
 
@@ -57,7 +63,9 @@ export default function VideoScreen() {
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {QUICK_SEARCHES.map(s => (
               <button key={s} onClick={() => { setQuery(s); search(s) }}
-                style={{ padding: '7px 12px', background: '#fff', border: `1px solid ${t.border}`, color: t.muted, cursor: 'pointer', fontSize: 11, fontFamily: t.font, letterSpacing: 0.5 }}>{s}</button>
+                style={{ padding: '7px 12px', background: '#fff', border: `1px solid ${t.border}`, color: t.muted, cursor: 'pointer', fontSize: 11, fontFamily: t.font }}>
+                {s}
+              </button>
             ))}
           </div>
         </div>
@@ -76,6 +84,22 @@ export default function VideoScreen() {
             <a key={v.id.videoId} href={`https://www.youtube.com/watch?v=${v.id.videoId}`} target="_blank" rel="noreferrer"
               style={{ display: 'flex', gap: 12, padding: '12px 0', borderBottom: `1px solid ${t.borderLight}`, textDecoration: 'none', alignItems: 'flex-start' }}>
               <div style={{ position: 'relative', flexShrink: 0 }}>
-                <img src={v.snippet.thumbnails.medium?.url} alt={v.snippet.title} style={{ width: 120, height: 68, objectFit: 'cover', display: 'block' }} />
+                <img src={v.snippet.thumbnails.medium?.url} alt={v.snippet.title}
+                  style={{ width: 120, height: 68, objectFit: 'cover', display: 'block' }} />
                 <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.25)' }}>
-                  <span s
+                  <span style={{ fontSize: 20, color: '#fff' }}>▶</span>
+                </div>
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12, color: t.text, fontFamily: t.font, lineHeight: 1.4, marginBottom: 4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                  {v.snippet.title}
+                </div>
+                <div style={{ fontSize: 10, color: t.dim, fontFamily: t.font }}>{v.snippet.channelTitle}</div>
+              </div>
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}

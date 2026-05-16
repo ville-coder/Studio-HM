@@ -27,7 +27,7 @@ export function useAnalyze() {
           'anthropic-dangerous-direct-browser-access': 'true'
         },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
+          model: 'claude-sonnet-4-5',
           max_tokens: 1500,
           system: 'Olet suomalainen rakennustekniikan asiantuntija (LVIS + arkkitehtuuri). Analysoi rakennusdetalji ja palauta VAIN JSON ilman markdown-koodiblokeja.',
           messages: [{

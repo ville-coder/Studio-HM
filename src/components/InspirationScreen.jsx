@@ -1,17 +1,18 @@
 import { useState, useCallback, useEffect } from 'react'
 import { t, Spinner } from './ui'
 
-const UNSPLASH_KEY = import.meta.env.VITE_UNSPLASH_KEY
+const YT_KEY = import.meta.env.VITE_YOUTUBE_API_KEY
+const GOOGLE_CX = import.meta.env.VITE_GOOGLE_CX
 
 const QUICK_SEARCHES = [
-  'modern architecture',
-  'scandinavian interior',
-  'minimalist home',
-  'wood facade',
-  'concrete architecture',
-  'kitchen design',
-  'bathroom design',
-  'staircase interior',
+  'moderni arkkitehtuuri',
+  'skandinaavinen sisustus',
+  'puurakenne julkisivu',
+  'minimalistinen koti',
+  'terassi design',
+  'keittiö moderni',
+  'kylpyhuone',
+  'omakotitalo',
 ]
 
 export default function InspirationScreen() {
@@ -21,20 +22,29 @@ export default function InspirationScreen() {
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    search('scandinavian architecture interior')
+    search('moderni arkkitehtuuri skandinaavinen')
   }, [])
 
   const search = useCallback(async (searchQuery) => {
     if (!searchQuery.trim()) return
     setLoading(true); setError(null)
     try {
-      const res = await fetch(
-        `https://api.unsplash.com/search/photos?query=${encodeURIComponent(searchQuery)}&per_page=20&orientation=squarish`,
-        { headers: { Authorization: `Client-ID ${UNSPLASH_KEY}` } }
-      )
-      if (!res.ok) throw new Error('Haku epäonnistui')
+      const params = new URLSearchParams({
+        key: YT_KEY,
+        cx: GOOGLE_CX,
+        q: searchQuery,
+        searchType: 'image',
+        num: 20,
+        safe: 'active',
+        imgSize: 'large'
+      })
+      const res = await fetch(`https://www.googleapis.com/customsearch/v1?${params}`)
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error?.message || 'Haku epäonnistui')
+      }
       const data = await res.json()
-      setImages(data.results || [])
+      setImages(data.items || [])
     } catch (e) { setError('Haku epäonnistui: ' + e.message) }
     setLoading(false)
   }, [])
@@ -66,13 +76,14 @@ export default function InspirationScreen() {
 
       {images.length > 0 && (
         <div style={{ padding: 8, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-          {images.map(img => (
-            <a key={img.id} href={img.links.html} target="_blank" rel="noreferrer"
+          {images.map((img, i) => (
+            <a key={i} href={img.image?.contextLink || img.link} target="_blank" rel="noreferrer"
               style={{ display: 'block', textDecoration: 'none', background: '#fff', border: `1px solid ${t.border}`, overflow: 'hidden' }}>
-              <img src={img.urls.small} alt={img.alt_description}
-                style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', display: 'block' }} />
+              <img src={img.link} alt={img.title}
+                style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', display: 'block' }}
+                onError={e => e.currentTarget.parentElement.style.display = 'none'} />
               <div style={{ padding: '5px 8px', fontSize: 9, color: t.dim, fontFamily: t.font, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
-                {img.user.name} · Unsplash
+                {img.displayLink}
               </div>
             </a>
           ))}

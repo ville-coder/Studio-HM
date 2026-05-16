@@ -1,10 +1,15 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+let supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Supabase-ympäristömuuttujat puuttuvat. Tarkista .env-tiedosto.')
+if (supabaseUrl && !supabaseUrl.startsWith('http')) {
+  supabaseUrl = 'https://' + supabaseUrl
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error('Supabase-ympäristömuuttujat puuttuvat.')
+  supabaseUrl = 'https://placeholder.supabase.co'
+}
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey || 'placeholder')

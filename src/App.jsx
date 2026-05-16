@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useLibrary } from './hooks/useLibrary'
 import LibraryScreen from './components/LibraryScreen'
 import DetailScreen from './components/DetailScreen'
@@ -40,7 +40,7 @@ function BottomNav({ active, onTab }) {
 
 export default function App() {
   const { library, loading, saving, addDetail, deleteDetail } = useLibrary()
-  const [tab, setTab] = useState('library')
+  const [tab, setTab] = useState('inspiration')
   const [selected, setSelected] = useState(null)
   const [toast, setToast] = useState(null)
 
@@ -49,9 +49,50 @@ export default function App() {
     setTimeout(() => setToast(null), 3000)
   }, [])
 
+  // Puhelimen takaisin-nappi + historia
+  const navigateTo = useCallback((newTab) => {
+    window.history.pushState({ tab: newTab }, '')
+    setTab(newTab)
+    setSelected(null)
+  }, [])
+
+  const openDetail = useCallback((detail) => {
+    window.history.pushState({ detail: detail.id }, '')
+    setSelected(detail)
+  }, [])
+
+  useEffect(() => {
+    const handlePop = () => {
+      if (selected) {
+        setSelected(null)
+      } else {
+        setTab('inspiration')
+      }
+    }
+    window.addEventListener('popstate', handlePop)
+    return () => window.removeEventListener('popstate', handlePop)
+  }, [selected])
+
+  // Pyyhkäisy vasemmalle takaisin
+  useEffect(() => {
+    if (!selected) return
+    let startX = 0
+    const onTouchStart = (e) => { startX = e.touches[0].clientX }
+    const onTouchEnd = (e) => {
+      const diff = e.changedTouches[0].clientX - startX
+      if (diff > 80) setSelected(null) // pyyhkäisy oikealle = takaisin
+    }
+    window.addEventListener('touchstart', onTouchStart)
+    window.addEventListener('touchend', onTouchEnd)
+    return () => {
+      window.removeEventListener('touchstart', onTouchStart)
+      window.removeEventListener('touchend', onTouchEnd)
+    }
+  }, [selected])
+
   const handleSave = async (detail) => {
     const res = await addDetail(detail)
-    if (res.success) { notify('Detalji tallennettu ✓'); setTab('library') }
+    if (res.success) { notify('Detalji tallennettu ✓'); navigateTo('library') }
     else notify('Tallennus epäonnistui', 'error')
   }
 
@@ -75,10 +116,18 @@ export default function App() {
         paddingTop: 'calc(16px + env(safe-area-inset-top))',
         boxShadow: '0 1px 8px rgba(0,0,0,0.04)'
       }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {selected && (
+            <button onClick={() => setSelected(null)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: t.accent, fontSize: 18, padding: '0 8px 0 0', lineHeight: 1 }}>
+              ←
+            </button>
+          )}
           <span style={{ fontSize: 9, letterSpacing: 4, color: t.dim, textTransform: 'uppercase' }}>Studio HM</span>
           <span style={{ color: t.border }}>|</span>
-          <span style={{ fontSize: 11, letterSpacing: 2, color: t.accent, textTransform: 'uppercase' }}>Detaljikirjasto</span>
+          <span style={{ fontSize: 11, letterSpacing: 2, color: t.accent, textTransform: 'uppercase' }}>
+            {selected ? selected.nimi : tab === 'library' ? 'Kirjasto' : tab === 'video' ? 'Videot' : tab === 'inspiration' ? 'Inspiraatio' : 'Lisää'}
+          </span>
         </div>
         {saving && <span style={{ fontSize: 9, color: t.dim, letterSpacing: 1 }}>Tallennetaan...</span>}
       </header>
@@ -87,7 +136,7 @@ export default function App() {
         <DetailScreen detail={selected} onBack={() => setSelected(null)}
           onDelete={async (id) => { await handleDelete(id); setSelected(null) }} />
       ) : tab === 'library' ? (
-        <LibraryScreen library={library} loading={loading} onSelect={setSelected} />
+        <LibraryScreen library={library} loading={loading} onSelect={openDetail} />
       ) : tab === 'video' ? (
         <VideoScreen />
       ) : tab === 'inspiration' ? (
@@ -97,7 +146,7 @@ export default function App() {
       )}
 
       {toast && <Toast msg={toast.msg} type={toast.type} />}
-      {!selected && <BottomNav active={tab} onTab={setTab} />}
+      {!selected && <BottomNav active={tab} onTab={navigateTo} />}
     </div>
   )
 }

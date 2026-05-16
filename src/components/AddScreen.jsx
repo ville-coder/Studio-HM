@@ -2,11 +2,83 @@ import { useState, useRef } from 'react'
 import { t, Tag, Btn, Spinner } from './ui'
 import { useAnalyze } from '../hooks/useAnalyze'
 
+function VoiceInput({ value, onChange }) {
+  const [listening, setListening] = useState(false)
+  const recognitionRef = useRef(null)
+
+  const toggleListen = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (!SpeechRecognition) {
+      alert('Selaimesi ei tue puheentunnistusta. Kirjoita teksti kenttään.')
+      return
+    }
+    if (listening) {
+      recognitionRef.current?.stop()
+      setListening(false)
+      return
+    }
+    const recognition = new SpeechRecognition()
+    recognition.lang = 'fi-FI'
+    recognition.continuous = true
+    recognition.interimResults = true
+    recognitionRef.current = recognition
+    recognition.onresult = (e) => {
+      const transcript = Array.from(e.results).map(r => r[0].transcript).join('')
+      onChange(transcript)
+    }
+    recognition.onend = () => setListening(false)
+    recognition.onerror = () => setListening(false)
+    recognition.start()
+    setListening(true)
+  }
+
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <div style={{ fontSize: 9, letterSpacing: 3, color: t.dim, textTransform: 'uppercase', marginBottom: 8 }}>
+        Konteksti (valinnainen)
+      </div>
+      <div style={{ position: 'relative' }}>
+        <textarea
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          placeholder="Mikä tässä detaljissa on olennaista? Mikä on ongelma tai tavoite?"
+          rows={3}
+          style={{
+            width: '100%', background: '#161616', border: `1px solid #222`,
+            color: t.text, padding: '10px 44px 10px 12px', fontSize: 12,
+            fontFamily: t.font, outline: 'none', resize: 'none',
+            lineHeight: 1.5, letterSpacing: 0.3
+          }}
+        />
+        <button
+          onClick={toggleListen}
+          style={{
+            position: 'absolute', right: 8, top: 8,
+            width: 28, height: 28, borderRadius: '50%',
+            background: listening ? '#8b3a3a' : '#1e1e1e',
+            border: `1px solid ${listening ? '#c05050' : '#333'}`,
+            cursor: 'pointer', display: 'flex', alignItems: 'center',
+            justifyContent: 'center', fontSize: 14,
+            animation: listening ? 'pulse 1s infinite' : 'none'
+          }}
+        >🎤</button>
+      </div>
+      {listening && (
+        <div style={{ fontSize: 10, color: '#c05050', letterSpacing: 1, marginTop: 6, fontFamily: t.font }}>
+          ● Kuuntelee... paina 🎤 lopettaaksesi
+        </div>
+      )}
+      <style>{`@keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:0.5 } }`}</style>
+    </div>
+  )
+}
+
 export default function AddScreen({ onSave }) {
-  const [step, setStep] = useState('capture') // capture | preview | result
+  const [step, setStep] = useState('capture')
   const [imageData, setImageData] = useState(null)
   const [mediaType, setMediaType] = useState('image/jpeg')
   const [fileName, setFileName] = useState('')
+  const [context, setContext] = useState('')
   const [result, setResult] = useState(null)
   const fileRef = useRef()
   const cameraRef = useRef()
@@ -17,26 +89,18 @@ export default function AddScreen({ onSave }) {
     setFileName(file.name)
     setMediaType(file.type || 'image/jpeg')
     const reader = new FileReader()
-    reader.onload = (ev) => {
-      setImageData(ev.target.result)
-      setStep('preview')
-    }
+    reader.onload = (ev) => { setImageData(ev.target.result); setStep('preview') }
     reader.readAsDataURL(file)
   }
 
   const handleAnalyze = async () => {
-    const res = await analyze(imageData, mediaType, fileName)
-    if (res.success) {
-      setResult(res.detail)
-      setStep('result')
-    }
+    const res = await analyze(imageData, mediaType, fileName, context)
+    if (res.success) { setResult(res.detail); setStep('result') }
   }
 
   const reset = () => {
-    setStep('capture')
-    setImageData(null)
-    setResult(null)
-    setFileName('')
+    setStep('capture'); setImageData(null); setResult(null)
+    setFileName(''); setContext('')
     if (fileRef.current) fileRef.current.value = ''
     if (cameraRef.current) cameraRef.current.value = ''
   }
@@ -44,7 +108,6 @@ export default function AddScreen({ onSave }) {
   if (step === 'capture') return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: 24, paddingBottom: 80 }}>
       <div style={{ fontSize: 9, letterSpacing: 4, color: t.dim, textTransform: 'uppercase', marginBottom: 8 }}>Uusi Detalji</div>
-
       <button onClick={() => cameraRef.current?.click()}
         style={{ width: '100%', maxWidth: 360, padding: '28px 20px', background: t.surface, border: '1px solid #2a2a2a', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
         <input ref={cameraRef} type="file" accept="image/*" capture="environment"
@@ -53,7 +116,6 @@ export default function AddScreen({ onSave }) {
         <span style={{ fontSize: 11, color: t.muted, letterSpacing: 2, textTransform: 'uppercase' }}>Kameralla</span>
         <span style={{ fontSize: 10, color: t.faint }}>Kuvaa detalji suoraan</span>
       </button>
-
       <button onClick={() => fileRef.current?.click()}
         style={{ width: '100%', maxWidth: 360, padding: 20, background: 'transparent', border: '1px dashed #2a2a2a', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
         <input ref={fileRef} type="file" accept="image/*,.pdf"
@@ -69,9 +131,9 @@ export default function AddScreen({ onSave }) {
     <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 80, padding: 16 }}>
       <div style={{ fontSize: 9, letterSpacing: 3, color: t.dim, textTransform: 'uppercase', marginBottom: 16 }}>Esikatselu</div>
       <img src={imageData} alt="preview"
-        style={{ width: '100%', maxHeight: 340, objectFit: 'contain', background: '#0a0a0a', display: 'block', marginBottom: 12 }} />
-      <div style={{ fontSize: 10, color: t.faint, marginBottom: 20 }}>{fileName}</div>
-
+        style={{ width: '100%', maxHeight: 280, objectFit: 'contain', background: '#0a0a0a', display: 'block', marginBottom: 16 }} />
+      <div style={{ fontSize: 10, color: t.faint, marginBottom: 16 }}>{fileName}</div>
+      <VoiceInput value={context} onChange={setContext} />
       {analyzing
         ? <Spinner label="Analysoidaan... Haetaan RT-kortit, valmistajat & videot" />
         : <>
@@ -88,40 +150,35 @@ export default function AddScreen({ onSave }) {
     <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 80 }}>
       <div style={{ padding: 16 }}>
         <div style={{ fontSize: 9, letterSpacing: 3, color: t.dim, textTransform: 'uppercase', marginBottom: 16 }}>Analyysin tulos</div>
-
         <div style={{ background: t.surfaceAlt, border: `1px solid ${t.border}`, padding: 16, marginBottom: 16 }}>
           <div style={{ fontSize: 9, letterSpacing: 2, color: t.accent, marginBottom: 6, textTransform: 'uppercase' }}>
             {result.jarjestelma} › {result.alaluokka}
           </div>
           <div style={{ fontSize: 15, color: t.text, marginBottom: 6 }}>{result.nimi}</div>
           <div style={{ fontSize: 11, color: t.muted, lineHeight: 1.5, marginBottom: 12 }}>{result.kuvaus}</div>
-
           <div style={{ display: 'flex', flexWrap: 'wrap', marginBottom: 10 }}>
             {result.rtKortit?.map(r => <Tag key={r}>{r}</Tag>)}
             {result.sfsStandardit?.map(s => <Tag key={s} accent>{s}</Tag>)}
           </div>
-
           <div style={{ fontSize: 10, color: t.faint }}>
             {result.valmistajat?.length || 0} valmistajaa · {result.asennusohjeet?.length || 0} asennusohjetta · {result.videot?.length || 0} videota
           </div>
         </div>
-
+        {context && (
+          <div style={{ padding: '10px 12px', background: '#0d0d0d', border: '1px solid #1e1e1e', marginBottom: 16 }}>
+            <div style={{ fontSize: 9, letterSpacing: 2, color: t.dim, textTransform: 'uppercase', marginBottom: 4 }}>Konteksti</div>
+            <div style={{ fontSize: 11, color: t.muted, fontStyle: 'italic' }}>{context}</div>
+          </div>
+        )}
         <img src={imageData} alt="" style={{ width: '100%', maxHeight: 180, objectFit: 'contain', background: '#0a0a0a', display: 'block', marginBottom: 16 }} />
-
         <Btn onClick={() => onSave({
-          nimi: result.nimi,
-          kuvaus: result.kuvaus,
-          jarjestelma: result.jarjestelma,
-          alaluokka: result.alaluokka,
-          rt_kortit: result.rtKortit || [],
-          sfs_standardit: result.sfsStandardit || [],
-          valmistajat: result.valmistajat || [],
-          asennusohjeet: result.asennusohjeet || [],
-          videot: result.videot || [],
-          avainsanat: result.avainsanat || [],
-          tiedosto_nimi: result.tiedosto_nimi,
-          lisatty: result.lisatty,
-          kuva: result.kuva
+          nimi: result.nimi, kuvaus: result.kuvaus,
+          jarjestelma: result.jarjestelma, alaluokka: result.alaluokka,
+          rt_kortit: result.rtKortit || [], sfs_standardit: result.sfsStandardit || [],
+          valmistajat: result.valmistajat || [], asennusohjeet: result.asennusohjeet || [],
+          videot: result.videot || [], avainsanat: result.avainsanat || [],
+          tiedosto_nimi: result.tiedosto_nimi, lisatty: result.lisatty,
+          kuva: result.kuva, konteksti: context || null
         })}>Tallenna Kirjastoon →</Btn>
         <div style={{ height: 10 }} />
         <Btn onClick={reset} variant="ghost">Hylkää</Btn>

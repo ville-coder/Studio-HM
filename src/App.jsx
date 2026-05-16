@@ -9,9 +9,10 @@ function BottomNav({ active, onTab }) {
   return (
     <nav style={{
       position: 'fixed', bottom: 0, left: 0, right: 0,
-      background: '#111', borderTop: `1px solid ${t.border}`,
+      background: '#fff', borderTop: `1px solid ${t.border}`,
       display: 'flex', zIndex: 50,
-      paddingBottom: 'env(safe-area-inset-bottom)'
+      paddingBottom: 'env(safe-area-inset-bottom)',
+      boxShadow: '0 -2px 12px rgba(0,0,0,0.06)'
     }}>
       {[
         { id: 'library', label: 'Kirjasto', icon: '⊟' },
@@ -23,8 +24,8 @@ function BottomNav({ active, onTab }) {
             cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
             borderTop: active === tab.id ? `2px solid ${t.accent}` : '2px solid transparent'
           }}>
-          <span style={{ fontSize: 20, color: active === tab.id ? t.accent : t.muted }}>{tab.icon}</span>
-          <span style={{ fontSize: 9, letterSpacing: 2, color: active === tab.id ? t.accent : t.muted, fontFamily: t.font, textTransform: 'uppercase' }}>
+          <span style={{ fontSize: 20, color: active === tab.id ? t.accent : t.dim }}>{tab.icon}</span>
+          <span style={{ fontSize: 9, letterSpacing: 2, color: active === tab.id ? t.accent : t.dim, fontFamily: t.font, textTransform: 'uppercase' }}>
             {tab.label}
           </span>
         </button>
@@ -46,12 +47,8 @@ export default function App() {
 
   const handleSave = async (detail) => {
     const res = await addDetail(detail)
-    if (res.success) {
-      notify('Detalji tallennettu ✓')
-      setTab('library')
-    } else {
-      notify('Tallennus epäonnistui', 'error')
-    }
+    if (res.success) { notify('Detalji tallennettu ✓'); setTab('library') }
+    else notify('Tallennus epäonnistui', 'error')
   }
 
   const handleDelete = async (id) => {
@@ -67,26 +64,24 @@ export default function App() {
       display: 'flex', flexDirection: 'column',
       fontFamily: t.font, color: t.text
     }}>
-      {/* Header */}
       <header style={{
-        padding: '14px 16px 12px', background: '#111',
+        padding: '16px 20px 14px', background: '#fff',
         borderBottom: `1px solid ${t.border}`,
-        display: 'flex', alignItems: 'baseline', gap: 10,
-        paddingTop: 'calc(14px + env(safe-area-inset-top))'
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        paddingTop: 'calc(16px + env(safe-area-inset-top))',
+        boxShadow: '0 1px 8px rgba(0,0,0,0.04)'
       }}>
-        <span style={{ fontSize: 9, letterSpacing: 4, color: '#555', textTransform: 'uppercase' }}>Studio HM</span>
-        <span style={{ color: '#222' }}>|</span>
-        <span style={{ fontSize: 11, letterSpacing: 2, color: t.accent, textTransform: 'uppercase' }}>Detaljikirjasto</span>
-        {saving && <span style={{ marginLeft: 'auto', fontSize: 9, color: t.faint, letterSpacing: 1 }}>Tallennetaan...</span>}
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+          <span style={{ fontSize: 9, letterSpacing: 4, color: t.dim, textTransform: 'uppercase' }}>Studio HM</span>
+          <span style={{ color: t.border }}>|</span>
+          <span style={{ fontSize: 11, letterSpacing: 2, color: t.accent, textTransform: 'uppercase' }}>Detaljikirjasto</span>
+        </div>
+        {saving && <span style={{ fontSize: 9, color: t.dim, letterSpacing: 1 }}>Tallennetaan...</span>}
       </header>
 
-      {/* Screen routing */}
       {selected ? (
-        <DetailScreen
-          detail={selected}
-          onBack={() => setSelected(null)}
-          onDelete={async (id) => { await handleDelete(id); setSelected(null) }}
-        />
+        <DetailScreen detail={selected} onBack={() => setSelected(null)}
+          onDelete={async (id) => { await handleDelete(id); setSelected(null) }} />
       ) : tab === 'library' ? (
         <LibraryScreen library={library} loading={loading} onSelect={setSelected} />
       ) : (

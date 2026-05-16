@@ -17,9 +17,9 @@ function BottomNav({ active, onTab }) {
       boxShadow: '0 -2px 12px rgba(0,0,0,0.06)'
     }}>
       {[
+        { id: 'inspiration', label: 'Inspis', icon: '✦' },
         { id: 'library', label: 'Kirjasto', icon: '⊟' },
         { id: 'video', label: 'Videot', icon: '▶' },
-        { id: 'inspiration', label: 'Inspis', icon: '✦' },
         { id: 'add', label: 'Lisää', icon: '⊕' }
       ].map(tab => (
         <button key={tab.id} onClick={() => onTab(tab.id)}
@@ -49,7 +49,6 @@ export default function App() {
     setTimeout(() => setToast(null), 3000)
   }, [])
 
-  // Puhelimen takaisin-nappi + historia
   const navigateTo = useCallback((newTab) => {
     window.history.pushState({ tab: newTab }, '')
     setTab(newTab)
@@ -63,24 +62,19 @@ export default function App() {
 
   useEffect(() => {
     const handlePop = () => {
-      if (selected) {
-        setSelected(null)
-      } else {
-        setTab('inspiration')
-      }
+      if (selected) { setSelected(null) }
+      else { setTab('inspiration') }
     }
     window.addEventListener('popstate', handlePop)
     return () => window.removeEventListener('popstate', handlePop)
   }, [selected])
 
-  // Pyyhkäisy vasemmalle takaisin
   useEffect(() => {
     if (!selected) return
     let startX = 0
     const onTouchStart = (e) => { startX = e.touches[0].clientX }
     const onTouchEnd = (e) => {
-      const diff = e.changedTouches[0].clientX - startX
-      if (diff > 80) setSelected(null) // pyyhkäisy oikealle = takaisin
+      if (e.changedTouches[0].clientX - startX > 80) setSelected(null)
     }
     window.addEventListener('touchstart', onTouchStart)
     window.addEventListener('touchend', onTouchEnd)
